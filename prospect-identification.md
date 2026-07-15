@@ -1,107 +1,44 @@
 ---
 name: prospect-identification
-description: Standalone, on-demand prospecting skill for a Freshworks Nordic Lead AE. Surfaces ~10 net-new candidate companies and one contact each (Sweden/Finland, ITSM/EX fit) across three lanes — ICP fit, buying signals, and lookalikes of current customers — for the user to review before hand-populating data/active-contacts.md. Triggers on "find new prospects", "surface candidates", "prospect identification", "new accounts to target". NOT scheduled and NOT part of the weekly outreach routine — run it manually when you need fresh candidates.
+description: On-demand prospecting for Freshservice Nordic. Surfaces net-new Sweden/Finland companies (Partner Playbook ICP) with 3–4 ranked contacts each, ranked by publicly-available buying signals, for you to review. Triggers on "find new prospects", "surface candidates", "who should I target", "prospect identification". Review-only — it does NOT touch the live pipeline; the weekly-prospect-outreach routine handles pipeline additions automatically. Run this when you want to eyeball fresh candidates or sanity-check the sourcing.
 ---
 
-# Prospect Identification — Freshworks Nordic (on-demand)
+# Prospect Identification — On-Demand (review-only)
 
 ## Purpose
 
-Surface a **reviewed candidate list (~10 companies, one contact each)** for
-the user to look over and selectively hand-copy into
-`data/active-contacts.md`. Selling **Freshservice** (ITSM / EX) into
-**Sweden and Finland**.
+A manual, **review-only** entry point to the sourcing engine. Use it when you
+want to see fresh candidates on demand — e.g. to sanity-check what the weekly
+routine would pull, or to eyeball a particular slice of the territory.
 
-This skill is **standalone and on-demand**. It is NOT scheduled and is NOT
-invoked by `weekly-prospect-outreach`. It **does not write** to
-`data/active-contacts.md` — the user owns that file and copies picks across
-manually.
+**It does not mutate `data/pipeline.md`.** The weekly `weekly-prospect-outreach`
+routine is what actually adds companies to the pipeline (capped and deduped).
+This wrapper only prints a ranked list for your eyes.
 
-## Inputs it reads
+## What it does
 
-| File | Role |
-|---|---|
-| `data/icp-freshservice-nordic.md` | The ICP profile that defines fit |
-| `data/nordic-freshservice-customers.md` | Anchors for lookalike sourcing |
+1. Invoke the shared engine `skills/prospect-identification.md`.
+2. Apply the same exclusions (existing customers, current pipeline, cooldown
+   log) so you don't see anyone already being worked.
+3. Print the ranked companies + contacts table (engine output format), newest
+   signals first.
+4. Stop. Make **no** writes to pipeline, config, or logs.
 
-## Tools
+## Optional focus
 
-| Tool | Purpose |
-|---|---|
-| ZoomInfo `search_companies` | ICP-filtered company search (Lane A) |
-| ZoomInfo `get_recommended_contacts` | Best-fit contacts at a company |
-| ZoomInfo `search_intent` | Buying-intent topics (Lane B) |
-| ZoomInfo `search_scoops` | Funding / leadership / initiative scoops (Lane B) |
-| ZoomInfo `find_similar_companies` | Lookalikes of current customers (Lane C) |
-| Prospecting MCP `signals_companies_search` | Secondary intent/signal source (Lane B) |
-| Prospecting MCP `lookalike_companies` | Secondary lookalike source (Lane C) |
-| Web search | Sanity-check the company/contact exists and is current |
+If you pass a focus (e.g. "manufacturing in Finland", "companies showing
+ServiceNow-migration intent", "lookalikes of Plantagen"), narrow the engine's
+lanes accordingly but keep all ICP guardrails from
+`data/icp-freshservice-nordic.md` in force.
 
-Load via ToolSearch: ZoomInfo `mcp__0de0dfba-...`, prospecting MCP
-`mcp__cc7bd256-...`.
+## Scheduling
 
-## The three lanes (aim ~3–4 candidates each)
+**None — on demand only.** This skill is never scheduled. Weekly automated
+sourcing happens inside `weekly-prospect-outreach`.
 
-### Lane A — ICP fit
-Use `search_companies` filtered to the ICP in
-`data/icp-freshservice-nordic.md`: Sweden/Finland HQ, target industries,
-employee band (sweet spot 250–1000). For each company, use
-`get_recommended_contacts` filtered to the contact priority order below.
+## Guardrails
 
-### Lane B — Buying signals
-Use `search_intent` + `search_scoops` (topics: ITSM, ServiceNow
-renewal/alternative, Jira Service Management, employee experience, IT
-automation) and `signals_companies_search` to find companies showing
-intent or relevant scoops (funding, IT/digital leadership hire, vendor
-evaluation, reorg/M&A). Keep only Sweden/Finland + ICP-shaped companies.
-
-### Lane C — Lookalikes of current customers
-Read `data/nordic-freshservice-customers.md`. For the strongest 3–5 anchor
-accounts, call `find_similar_companies` (and `lookalike_companies` as a
-secondary source). Filter results to Nordic geo + matching size band.
-
-## Contact priority (one contact per company)
-
-Mirror `data/active-contacts.md`:
-- **Priority 1:** Head of IT Service Management / Head of IT Service
-  Delivery / Head of IT Operations
-- **Priority 2:** IT Director
-- **Priority 3:** Head of IT (fallback only)
-
-Pick the highest-priority reachable contact. If none of these exist at a
-company, note that and let the user decide.
-
-## Process
-
-1. Run all three lanes.
-2. **Dedupe** across lanes (a company found in two lanes is one candidate —
-   note both reasons).
-3. Cap at ~10 strongest candidates, balanced across lanes where possible.
-4. Sanity-check each company and contact is real and current (quick web
-   check). Never invent a company or person.
-
-## Output (for review — paste-ready)
-
-A table the user can review and copy from into `data/active-contacts.md`:
-
-```
-CANDIDATES — reviewed [DATE]
-
-| # | Company | Country | Contact Name | Title | LinkedIn URL | Lane | Why now |
-|---|---------|---------|--------------|-------|--------------|------|---------|
-| 1 | ... | ... | ... | ... | ... | A/B/C | one-line rationale 📎 source |
-...
-```
-
-Plus a one-line note flagging any candidate where the contact tier dropped
-to Priority 3 or where data was thin.
-
-## Quality rules
-
-- **Source URL** for the "why now" rationale on every candidate.
-- **No fabrication** — real companies, real current contacts only.
-- **Respect compliance** — legitimate B2B research, no bulk scraping, no
-  mass-list building. Individual research queries only.
-- **Do not write to `data/active-contacts.md`.** Output is for the user to
-  review and copy manually.
-- **On-demand only.** Do not set up a schedule for this skill.
+Same as the engine: real companies/contacts only, source URL on every signal,
+"unknown" allowed, dedupe + cooldown respected, 1,000–5,000 primary size band
+(outside only on very strong funded intent), HaloITSM weighted as a live Nordic
+competitor, legitimate B2B research only.

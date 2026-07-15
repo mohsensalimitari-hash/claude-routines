@@ -1,113 +1,115 @@
 ---
 name: prospect-research
-description: Phase 1 of the weekly-prospect-outreach routine. Builds a research dossier for a single contact/company from data/active-contacts.md — firmographics, recent news, scoops, intent, contact signals, tech-stack/competitor angle, best-match customer proof, the single strongest personalisation anchor, and a confidence flag. Invoked once per contact by the orchestrator. Can also be run standalone to research one company. Every claim must carry a source URL.
+description: Research phase of the weekly-prospect-outreach routine. Builds a dossier per company in the pipeline (researched once, shared across its 3–4 contacts) using ZoomInfo + Lusha AND public sources — latest news, annual/quarterly reports, exec interviews, sector trends. Produces the firmographic snapshot, incumbent/competitor angle, best-match customer proof, the single strongest personalisation anchor, and a confidence flag. Every claim carries a source URL.
 ---
 
-# Prospect Research — Freshworks Nordic
+# Prospect Research — Freshservice Nordic (multi-source)
 
 ## Purpose
 
-Produce one structured **dossier** per contact so the `outreach-drafter`
-skill can write sharp, personalised touches. You are given a single row
-from `data/active-contacts.md`:
+Produce one **dossier per company** so `outreach-drafter` can write sharp,
+personalised touches. A company is researched **once** and the dossier is shared
+across its 3–4 contacts (plus a short per-contact snapshot each).
 
-`{ Company, Country, Contact Name, Title, LinkedIn URL }`
+You are given a company + its contacts from `data/pipeline.md`, the qualifying
+signal that put it there, and the current cadence week. On **Week 1** do a full
+pass. On **Weeks 2–4** do a lighter refresh: confirm the anchor still holds and
+surface anything new since last week.
 
-You are also told the current run/week (1–4). On **run 1** do a full
-research pass. On **runs 2–4** do a lighter refresh: re-confirm the anchor
-still holds and surface anything new since last week — do not rebuild from
-scratch.
+## Sources — vendors AND public web
 
-## Tools
-
-| Tool | Purpose |
+| Source | Tools |
 |---|---|
-| ZoomInfo `enrich_companies` | Firmographics: size, industry, HQ, revenue |
-| ZoomInfo `enrich_scoops` | Funding, leadership moves, initiatives |
-| ZoomInfo `enrich_intent` | Active buying-intent topics |
-| ZoomInfo `enrich_news` | Recent company news |
-| ZoomInfo `enrich_contacts` | Contact title, tenure, seniority |
-| ZoomInfo `account_research` / `contact_research` | Deeper structured pulls if the enrich calls are thin |
-| Web search | 30-day company news; public contact activity (talks, quotes, press) |
+| **ZoomInfo** (`mcp__ZoomInfo__*`) | `enrich_companies`, `enrich_scoops`, `enrich_intent`, `enrich_news`, `enrich_company_signals`, `enrich_contacts`, `account_research`, `contact_research` |
+| **Lusha** (`mcp__Lusha__*`) | `prospecting_company_enrich`, `prospecting_contact_enrich`, `signals_companies_get`, `website_visits_search` |
+| **Public web** | `WebSearch`, `WebFetch` — news, **latest annual & quarterly reports**, **exec interviews**, **sector trends**, job postings |
 
-Use ToolSearch to load the ZoomInfo tools (prefix
-`mcp__0de0dfba-...`) when you need them.
+Do not rely on the two vendors alone — the public-web read is what makes the
+anchor specific and credible.
 
 ## What to gather
 
 ### 1. Company snapshot (3–4 facts)
-- What they do, in one line.
+- What they do, one line.
 - Size (employees / revenue band) and HQ.
-- Most relevant recent news in the last ~30 days.
-- One tech-stack signal if findable (see §3).
+- Most relevant development in the last ~30 days (news / report / interview).
+- One tech-stack / incumbent signal (see §3).
 
-### 2. Contact snapshot
-- Confirm title and seniority (does it match the priority tiers?).
-- Tenure if known (new-in-role is a strong anchor).
-- Any recent public activity: conference talks, quotes, articles, posts
-  referenced in press. Use the LinkedIn URL from the contact row as the
-  identity anchor — **do not scrape LinkedIn**; rely on ZoomInfo + web.
+### 2. Public-source deep read (the differentiator)
+- **Latest annual / quarterly report:** search for it; pull any stated IT,
+  digital-transformation, efficiency, growth or M&A priorities.
+- **Recent press & interviews:** especially from the target contacts or their
+  execs — priorities, pain, initiatives in their own words.
+- **Sector trend context:** what's pressing their industry (cost pressure,
+  consolidation, compliance, growth) that ITSM/EX touches.
 
-### 3. Tech-stack / competitor angle
-Look for current ITSM/CX tooling signals via scoops, job postings, news,
-case studies: **ServiceNow, Jira Service Management, HaloITSM, Cherwell,
-Zendesk**. A known incumbent is a strong displacement angle.
+### 3. Incumbent / competitor angle
+Identify the current ITSM/service tool via scoops, job postings, case studies,
+news: **HaloITSM** (weight as a live Nordic competitor), **ServiceNow**,
+**TOPdesk**, **BMC**, **ManageEngine**, **Ivanti**, **Jira Service Management**,
+legacy/free ticketing. Note the maturity band (low vs. cost-constrained-high)
+and the matching displacement angle from `data/icp-freshservice-nordic.md`.
 
 ### 4. Customer-proof match
-Read `data/nordic-freshservice-customers.md`. Pick the **1–2 closest
-analogues** to this prospect by Industry + Employee band. Note which and
-why. This feeds the Week 3 social-proof email.
+Read `data/nordic-freshservice-customers.md`; pick the **1–2 closest analogues**
+by industry + employee band. Note which and why (feeds Week-3 Email 3).
 
-### 5. Personalisation anchor (pick ONE, label it)
-Choose the single strongest hook for outreach and tag it as one of:
-- `NEWS` — a recent company development
+### 5. Contact snapshot (per contact, brief)
+- Confirm title/seniority and persona (budget owner / champion / I&O).
+- Tenure if known (new-in-role is a strong anchor).
+- Any recent public activity (talks, quotes, posts) via web — use the LinkedIn
+  URL from the pipeline as identity; do **not** scrape LinkedIn.
+
+### 6. Personalisation anchor (pick ONE, label it)
+The single strongest hook, tagged:
+- `TRIGGER` — a funded project / event (tool retirement, M&A, growth, audit)
+- `INCUMBENT` — current tool pain / displacement angle
+- `NEWS` — a recent company development / report / interview point
 - `ROLE` — contact signal (new in role, expanded remit, public commentary)
-- `TECH` — known incumbent tool / consolidation pain
-- `PROOF` — a closely analogous Nordic customer story
+- `PROOF` — a closely analogous Nordic customer
+State in one line *why* it's strongest.
 
-State in one line *why* this anchor is the strongest for this person.
+### 7. Confidence flag
+**HIGH / MEDIUM / LOW** + one-line reason. LOW → drafter keeps claims generic.
 
-### 6. Confidence flag
-Assign **HIGH / MEDIUM / LOW** with a one-line reason:
-- HIGH — anchor is specific, verified, current, multiple corroborating sources.
-- MEDIUM — anchor is plausible but partly inferred or single-source.
-- LOW — thin data; anchor is generic. Flag clearly so the drafter keeps it safe.
-
-## Output format (return to orchestrator)
+## Output (per company, return to orchestrator)
 
 ```
-CONTACT: [Name], [Title] — [Company] ([Country])
-LinkedIn: [URL from active-contacts.md]
+COMPANY: [name] — [country] — [industry] — [employee band]
+Cadence Week: [1–4]   |   Qualifying signal: [from pipeline]
 
 COMPANY SNAPSHOT
 • [what they do]
 • [size / HQ]
-• [recent news]                         📎 [source URL]
-• [tech-stack signal]                   📎 [source URL]
+• [recent development]                    📎 [url]
+• [incumbent signal]                       📎 [url]
 
-CONTACT SNAPSHOT
-• Title/seniority: [...]                📎 [source URL]
-• Tenure: [... or "unknown"]
-• Recent activity: [... or "none found"] 📎 [source URL]
+PUBLIC-SOURCE READ
+• Report/priorities: [...]                 📎 [url]
+• Press/interview: [...]                    📎 [url]
+• Sector trend: [...]                       📎 [url]
 
-TECH / COMPETITOR ANGLE
-• [incumbent tool + evidence, or "no clear signal"]  📎 [source URL]
+INCUMBENT / COMPETITOR ANGLE
+• [tool + maturity band + displacement angle, or "no clear signal"]  📎 [url]
 
 CUSTOMER-PROOF MATCH
-• [Customer name] — [why analogous: industry + size]
+• [Customer] — [why analogous: industry + size]
 
-ANCHOR: [NEWS | ROLE | TECH | PROOF]
+CONTACTS
+• [Name], [Title] — persona: [budget owner/champion/I&O] — tenure: [.. or unknown]
+  recent activity: [.. or none found]      📎 [url]
+• (repeat for each contact)
+
+ANCHOR: [TRIGGER | INCUMBENT | NEWS | ROLE | PROOF]
 Why: [one line]
 
-CONFIDENCE: [HIGH | MEDIUM | LOW] — [one-line reason]
+CONFIDENCE: [HIGH | MEDIUM | LOW] — [reason]
 ```
 
 ## Quality rules
-
 - **Source URL on every factual claim.** No URL → don't state it as fact.
-- **"Unknown" is allowed and expected.** Better an honest gap than a guess.
-- **Never invent** email addresses, phone numbers, names, or news.
-- **Respect compliance.** Legitimate B2B research only; no scraping,
-  no bulk extraction. One contact at a time.
-- **Stay current.** Prioritise the last 30 days; ignore stale material
-  unless it is load-bearing for the anchor.
+- **"Unknown" is allowed and expected.** Honest gap beats a guess.
+- **Never invent** people, emails, phones, news, or metrics.
+- **Only cite Freshservice proof figures from the playbook/ICP file** — never
+  invented numbers.
+- Legitimate B2B research; no scraping, no bulk extraction; one company at a time.

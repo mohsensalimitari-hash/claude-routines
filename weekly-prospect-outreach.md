@@ -1,135 +1,127 @@
 ---
 name: weekly-prospect-outreach
-description: Weekly outreach engine for a Freshworks Nordic Lead AE. Every Monday it works the same 10 contacts (maintained by hand in data/active-contacts.md) through a 12-touch / 4-week cadence, advancing one week per run. For the current week it researches each contact, drafts that week's 3 outreach touches (email / LinkedIn / cold call / video), and delivers a Google Doc plus a summary email. After 4 runs it pauses and asks for a contact-list refresh. Triggers on "weekly outreach", "Monday outreach", "prospect outreach run", "run the outreach routine", or scheduled Remote Routine invocation. Does NOT find prospects — for that, use the standalone prospect-identification skill.
+description: Always-on weekly outreach engine for a Freshworks Nordic Lead AE. Runs a living pipeline of Sweden/Finland companies, each on its own 4-week / 12-touch cadence. Every Monday it removes declined/aged-out companies, advances everyone one week, sources up to a capped number of net-new signal-qualified companies (3–4 contacts each), researches and drafts that week's touches, and delivers a Google Doc + drafted summary email. Triggers on "weekly outreach", "Monday outreach", "prospect outreach run", "run the pipeline", or scheduled Remote Routine invocation.
 ---
 
-# Weekly Prospect Outreach — Freshworks Nordic
+# Weekly Prospect Outreach — Freshworks Nordic (living pipeline)
 
 ## Operating Context
 
-You support a **Lead Account Executive at Freshworks** covering **Sweden
-and Finland**, selling **Freshservice** (ITSM / Employee Experience).
+You support a **Lead Account Executive at Freshworks** (Mohsen "Moe" Salimi
+Tari) covering **Sweden and Finland**, selling **Freshservice** (ITSM / EX).
 
-This routine does **not** find prospects. It works a fixed set of **10
-contacts** that the user maintains by hand in `data/active-contacts.md`,
-progressing each contact through a **12-touch, 4-week cadence** — three
-touches per week. It runs every Monday and advances exactly one week per
-run. After the 4th run it pauses for a contact refresh.
+This is an **always-on pipeline**, not a fixed cohort. Each company runs its own
+**4-week / 12-touch cadence** (three touches per week). Every weekly run the
+pipeline **self-cleans** (removes declined / aged-out companies), **advances**
+everyone one week, and **adds** up to a capped number of net-new, signal-
+qualified companies. It sources its own targets — you do not maintain a contact
+list; your only manual input is the `Status` column in `data/pipeline.md`.
 
-To source new candidates, the user runs the separate, on-demand
-`prospect-identification` skill — that is not part of this routine.
-
-## Inputs it reads
+## Inputs / state
 
 | File | Role |
 |---|---|
-| `data/cycle-state.md` | `current_run` (1–4) and `status` — auto-managed by this routine |
-| `data/active-contacts.md` | The 10 contacts (user-maintained) |
-| `data/nordic-freshservice-customers.md` | Proof points for Week 2 DM + Week 3 email |
+| `data/pipeline.md` | Living pipeline (workflow-owned; you edit only `Status`) |
+| `data/config.md` | Caps, cooldowns, signal threshold |
+| `data/dropped-log.md` | Exited companies + cooldowns |
+| `data/icp-freshservice-nordic.md` | ICP (from the Partner Playbook; Nordic-calibrated) |
+| `data/nordic-freshservice-customers.md` | Proof points + lookalike anchors + exclusions |
+| `moe-writing-styles.md` | Moe's voice for all drafted copy |
 
-## Sub-skills it invokes
+## Sub-skills
 
 | Skill | Phase |
 |---|---|
-| `skills/prospect-research.md` | 1 — dossier per contact |
-| `skills/outreach-drafter.md` | 2 — the current week's 3 touches per contact |
-| `skills/google-doc-delivery.md` | 3 — Google Doc + drafted summary email |
+| `skills/prospect-identification.md` | Source net-new companies (signal-ranked) |
+| `skills/prospect-research.md` | Dossier per company |
+| `skills/outreach-drafter.md` | This week's 3 touches per contact |
+| `skills/google-doc-delivery.md` | Google Doc + drafted summary email |
 
 ---
 
 ## Execution Flow
 
-### Step 0 — State gate
-Read `data/cycle-state.md`.
-- If `status: awaiting-reset` → **STOP**. Tell the user:
-  *"The 4-week cycle is complete and waiting for a reset. Update
-  data/active-contacts.md with 10 new contacts, then set current_run: 1 and
-  status: active in data/cycle-state.md to start a new cycle."* Do nothing
-  else.
-- Otherwise read `current_run` (expect 1, 2, 3 or 4). This is **Week X**.
+### Step 1 — Load
+Read `data/pipeline.md`, `data/config.md`, `data/dropped-log.md`.
 
-### Step 1 — Load contacts
-Read `data/active-contacts.md`. Parse the 10 rows
-(`Company, Country, Contact Name, Title, LinkedIn URL`). Skip blank rows.
-If fewer than 10 populated rows, proceed with what's there but warn the
-user how many were found. If zero, stop and tell the user to populate the
-file.
+### Step 2 — Status reconciliation (mid-cadence exits, runs first)
+For each pipeline row, read the per-contact `Status`:
+- Any value other than `active` → remove **that contact**; append to
+  `data/dropped-log.md` with its reason (`responded` / `not-interested` /
+  `disqualified`) and cooldown per `config.md`.
+- `drop-company` on any row, **or** a company whose every contact is now
+  inactive → exit the **whole account** to `dropped-log.md`.
+This runs regardless of cadence week — a week-2 "not interested" drops immediately.
 
-### Step 2 — Phase 1: Research
-For each contact, invoke `skills/prospect-research.md`, passing the contact
-row and `current_run`. Collect one dossier per contact. (Run 1 = full
-research; runs 2–4 = lighter refresh confirming the anchor + new
-developments.)
+### Step 3 — Advance cadence
+For each still-active company, increment `Cadence Week`. Any company that just
+moved **past Week 4** (all 12 touches delivered) with no response → exit to
+`dropped-log.md` (reason `no-response`, cooldown `cooldown_weeks_no_response`).
 
-### Step 3 — Phase 2: Draft
-For each dossier, invoke `skills/outreach-drafter.md`, passing the dossier
-and `current_run`. It returns **only Week X's three touches**. Language is
-Swedish for Sweden contacts, English for Finland contacts — never mixed.
+### Step 4 — Add net-new companies
+Invoke `skills/prospect-identification.md`. Add up to `weekly_add_cap`
+(or `first_run_seed_cap` if the pipeline is empty) companies scoring
+**≥ `signal_score_threshold`**. Dedupe against the current pipeline, existing
+customers (`nordic-freshservice-customers.md`), and anything in cooldown in
+`dropped-log.md`. **Adding fewer than the cap is correct** when few qualify.
+New companies enter at **Cadence Week 1**, Status `active`, with 3–4 contacts,
+carrying their company signal / contact signal / sources into the pipeline rows.
 
-### Step 4 — Phase 3: Deliver
-Invoke `skills/google-doc-delivery.md` once with all dossiers + drafted
-touches + `current_run` + run date. It creates one Google Doc (all
-contacts, Week X assets) and **drafts** the Layer-1 summary email to
+### Step 5 — Research
+For each company that has touches due this week (Weeks 1–4), invoke
+`skills/prospect-research.md` (company researched once; multi-source: ZoomInfo +
+Lusha + public web — news, annual/quarterly reports, interviews, trends).
+
+### Step 6 — Draft
+For each active contact, invoke `skills/outreach-drafter.md` with the company
+dossier + that company's `Cadence Week` → that week's three touches. Voice per
+`moe-writing-styles.md`. **Swedish** for Sweden contacts, **English** for Finland.
+
+### Step 7 — Deliver
+Invoke `skills/google-doc-delivery.md` once with: new companies, in-cadence
+companies + drafted touches, exited companies, and the run date. It creates one
+Google Doc (New / In-cadence / Exited) and **drafts** the summary email to
 `mohsen.salimitari@freshworks.com`. Confirm to the user when both exist.
 
-### Step 5 — Advance the cycle
-Increment `current_run` in `data/cycle-state.md` by 1.
-
-### Step 6 — Cycle completion (only if the run just completed was run 4)
-When the run that just finished was **run 4**:
-1. **Auto-send** an email (this one is sent, not drafted) to
-   `mohsen.salimitari@freshworks.com`:
-   - Subject: `Outreach Cycle Complete — Please Update Your Contact List`
-   - Body: confirm the 4-week cycle is done; instruct the user to replace
-     all 10 rows in `data/active-contacts.md` with 10 new companies/
-     contacts; and to manually reset `current_run` to `1` in
-     `data/cycle-state.md` when ready to start a new cycle.
-2. Set `status: awaiting-reset` in `data/cycle-state.md`. (After
-   incrementing in Step 5, `current_run` will read 5 — that's fine; the
-   manual reset returns it to 1. The `awaiting-reset` status is the gate.)
-3. Do **not** run again until the user manually sets `status: active`.
+### Step 8 — Persist
+Write the updated `data/pipeline.md` (new companies added, weeks incremented,
+exited rows removed) and `data/dropped-log.md`. The pipeline runs continuously —
+there is no cycle-completion pause.
 
 ---
 
-## Email-delivery policy (locked)
+## Guardrails
 
-- **Weekly summary email** (Step 4, via google-doc-delivery): **DRAFTED**
-  for review. Never auto-sent.
-- **Cycle-completion email** (Step 6): **AUTO-SENT**, so the reset prompt
-  cannot be missed.
-- No outreach is ever sent or posted on the user's behalf. Emails, LinkedIn
-  notes/DMs, call scripts, and video scripts are all drafts/assets for the
-  user to dispatch from their own stack.
-
-## Quality Rules
-
-- **Source URL on every factual claim** in research and the Doc.
-- **No fabricated contacts, companies, news, or contact details.**
-- **"Unknown" is allowed** — flag gaps honestly via confidence flags.
-- **Respect the cadence and language rules** exactly.
-- **One Google Doc + one summary draft per run.** No fragmentation.
-- **Honour the state gate** — never run outreach while `awaiting-reset`.
+- **Draft-only.** Nothing outbound is sent or posted on Moe's behalf. Emails,
+  LinkedIn notes/DMs, call scripts, and video scripts are all drafts/assets. The
+  only email created is the **drafted** weekly summary to Moe's own address.
+- **Source URL on every signal and factual claim**; "unknown" allowed; no
+  fabricated companies, contacts, news, or metrics.
+- **Only real playbook proof figures** in outreach — never invented numbers.
+- **Dedupe + cooldown** always enforced (pipeline + customers + dropped-log).
+- **Size discipline:** 1,000–5,000 is the primary band; outside it only on very
+  strong funded intent (flagged as an exception).
+- **HaloITSM** is treated as a live Nordic competitor (the playbook's TOPdesk
+  emphasis is partly a Netherlands-data artifact).
+- Legitimate B2B research only (ZoomInfo/Lusha terms); GDPR legitimate-interest —
+  draft-only keeps a human in the loop before any contact.
 
 ## Scheduling Guidance
 
-Set this up as a **Claude Code Remote Routine** (not a Cowork scheduled
-task).
-
+Set up as a **Claude Code Remote Routine** (not a Cowork scheduled task).
 - **Trigger:** every **Monday at 07:30** local time.
-- **Routine prompt:** *"Run the weekly prospect outreach routine."*
+- **Routine prompt:** *"Run the weekly prospect outreach pipeline."*
 
-The routine self-manages which week it is via `data/cycle-state.md`, so the
-schedule never changes — it just fires weekly and the routine does the
-right thing for the current run (or pauses if `awaiting-reset`).
-
-The standalone `prospect-identification` skill is **on-demand only** and is
-never scheduled.
+The pipeline self-manages cadence and membership via `data/pipeline.md`, so the
+schedule never changes. `prospect-identification.md` at the repo root is the
+**on-demand, review-only** entry point and is never scheduled.
 
 ## Connectors Used
 
 | Connector | Purpose |
 |---|---|
-| **ZoomInfo** | Firmographics, scoops, intent, contact data (research phase) |
-| **Web search** | Recent company news and public contact signals |
-| **Google Drive** | Creates the weekly Google Doc |
-| **Gmail** | Drafts the weekly summary; auto-sends the completion email |
+| **ZoomInfo** | Firmographics, intent, scoops, company signals, contacts |
+| **Lusha** | Contact gaps, decision-makers, company signals, website visits |
+| **Web search / fetch** | News, annual/quarterly reports, interviews, sector trends |
+| **Google Drive** | Creates the weekly pipeline Google Doc |
+| **Gmail** | Drafts the weekly summary email |

@@ -39,6 +39,11 @@ sourcing happens inside `weekly-prospect-outreach`.
 ## Guardrails
 
 Same as the engine: real companies/contacts only, source URL on every signal,
-"unknown" allowed, dedupe + cooldown respected, 1,000–5,000 primary size band
-(outside only on very strong funded intent), HaloITSM weighted as a live Nordic
-competitor, legitimate B2B research only.
+"unknown" allowed, dedupe + cooldown respected, **HQ in Sweden/Finland (hard
+filter)**, 1,000–5,000 primary size band (outside only on very strong funded
+intent), HaloITSM weighted as a live Nordic competitor, legitimate B2B research
+only. Incumbent tool is detected via ZoomInfo tech-product tags (engine Lane D)
+where possible. When ZoomInfo + Lusha return thin IT-leadership contacts for a
+company worth pursuing, the engine flags `contactability` and prints a ready
+**LinkedIn Sales Navigator** search for you to check manually — it never scrapes
+LinkedIn itself.

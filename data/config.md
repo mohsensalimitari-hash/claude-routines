@@ -15,7 +15,7 @@ max_active_companies: 20
 cooldown_weeks_no_response: 8
 cooldown_weeks_not_interested: 26
 cooldown_weeks_meeting_or_engaged: 52
-signal_score_threshold: 60
+signal_score_threshold: 70
 
 <!--
   Field notes:
@@ -37,4 +37,8 @@ signal_score_threshold: 60
   - signal_score_threshold: 0–100. Minimum company score (see
     skills/prospect-identification.md) required to enter the pipeline. Raise it
     to be more selective, lower it to add more. Tune during the sourcing dry-run.
+    Set to 70 after two Sweden sourcing dry-runs: in both runs the high-conviction
+    accounts (funded trigger and/or confirmed incumbent displacement) scored 76–85,
+    while borderline names clustered at 60–68. A threshold of 70 keeps only the
+    2–4 genuinely actionable accounts per run, which fits weekly_add_cap: 5.
 -->

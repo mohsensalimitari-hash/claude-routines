@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__0de0dfba-3c1f-4975-91bb-bada9af45d1c",
+      "mcp__ZoomInfo",
+      "mcp__cc7bd256-31cb-4601-87fb-274bf392764c",
+      "mcp__Lusha",
+      "mcp__66cc2eb3-eb0d-43cb-9d27-690a3ec0003d",
+      "mcp__Google_Drive",
+      "mcp__7618e3c8-9769-4a40-b40b-ca37fce173bb",
+      "mcp__Gmail"
+    ]
+  }
+}

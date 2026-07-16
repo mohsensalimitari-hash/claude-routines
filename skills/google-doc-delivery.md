@@ -21,6 +21,13 @@ this week's drafted touches, companies that exited this run, and the run date.
 | Google Drive `mcp__Google_Drive__create_file` | Create the Google Doc (Layer 2) |
 | Gmail `mcp__Gmail__create_draft` | Draft the summary email (Layer 1) |
 
+**Create a real Google Doc, not a raw upload.** Request mime type
+`application/vnd.google-apps.document` so the content lands as an editable Google
+Doc. If `create_file` cannot convert the content (produces a plain `.txt`/`.md`
+file instead), fall back to creating the file as Markdown and note the limitation
+in the summary email so the user knows to expect a doc-file rather than a native
+Doc. Confirm which behaviour occurs during the first test run and adjust.
+
 ## Layer 2 — the Google Doc
 
 **Title:** `Outreach Pipeline — Week of [DATE]`
@@ -67,7 +74,7 @@ Touch labels per week:
 Keep each contact's assets in that contact's language (Swedish / English).
 
 ### 3. EXITED THIS WEEK
-Table: `Company | Reason (no-response / not-interested / disqualified / responded / drop-company) | Cooldown-until`.
+Table: `Company | Reason (no-response / not-interested / meeting-booked / drop-company) | Cooldown-until`.
 
 After creating the Doc, capture its shareable URL for Layer 1.
 

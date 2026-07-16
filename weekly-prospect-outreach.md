@@ -45,27 +45,44 @@ list; your only manual input is the `Status` column in `data/pipeline.md`.
 Read `data/pipeline.md`, `data/config.md`, `data/dropped-log.md`.
 
 ### Step 2 — Status reconciliation (mid-cadence exits, runs first)
-For each pipeline row, read the per-contact `Status`:
-- Any value other than `active` → remove **that contact**; append to
-  `data/dropped-log.md` with its reason (`responded` / `not-interested` /
-  `disqualified`) and cooldown per `config.md`.
-- `drop-company` on any row, **or** a company whose every contact is now
-  inactive → exit the **whole account** to `dropped-log.md`.
+Read the per-contact `Status`:
+- **`meeting-booked`** on any contact → **pause the whole account**: remove all
+  its contacts from the active pipeline and append the company to
+  `data/dropped-log.md` (reason `meeting-booked`, cooldown
+  `cooldown_weeks_meeting_or_engaged`). This is the only per-contact status that
+  affects the siblings.
+- **`not-interested` / `disqualified`** on a contact → remove **that contact
+  only**. Do **NOT** append the company to `dropped-log.md` while it still has
+  active contacts — it stays in the pipeline. If this removal leaves the company
+  with **zero** active contacts, then the company exits (reason `not-interested`,
+  cooldown `cooldown_weeks_not_interested`).
+- **`drop-company`** on any row → exit the **whole account** (reason
+  `drop-company`, cooldown `cooldown_weeks_not_interested`).
+- A contact left `active` (including one that merely replied without a meeting or
+  a disqualifier) keeps running the cadence.
 This runs regardless of cadence week — a week-2 "not interested" drops immediately.
 
 ### Step 3 — Advance cadence
-For each still-active company, increment `Cadence Week`. Any company that just
-moved **past Week 4** (all 12 touches delivered) with no response → exit to
-`dropped-log.md` (reason `no-response`, cooldown `cooldown_weeks_no_response`).
+For each **existing** still-active company, increment `Cadence Week` by 1. Any
+company that thereby moves **past Week 4** (all 12 touches delivered) with no
+response → exit to `dropped-log.md` (reason `no-response`, cooldown
+`cooldown_weeks_no_response`). Do not write a "Week 5" — detect and exit.
+(Newly-added companies in Step 4 are NOT incremented this run — they enter at
+Week 1 and receive Week-1 touches.)
 
 ### Step 4 — Add net-new companies
-Invoke `skills/prospect-identification.md`. Add up to `weekly_add_cap`
-(or `first_run_seed_cap` if the pipeline is empty) companies scoring
-**≥ `signal_score_threshold`**. Dedupe against the current pipeline, existing
-customers (`nordic-freshservice-customers.md`), and anything in cooldown in
-`dropped-log.md`. **Adding fewer than the cap is correct** when few qualify.
-New companies enter at **Cadence Week 1**, Status `active`, with 3–4 contacts,
-carrying their company signal / contact signal / sources into the pipeline rows.
+Invoke `skills/prospect-identification.md`. Add companies scoring
+**≥ `signal_score_threshold`**, up to **`weekly_add_cap`** per run
+(or **`first_run_seed_cap`** if the pipeline is empty), but **never let the
+active pipeline exceed `max_active_companies`** — if it is already at the ceiling
+(as it will be for ~3 weeks after the first seed of 20), add **none** and resume
+only as companies exit. **Adding fewer than the cap is correct** when few
+qualify. Dedupe against the current pipeline, existing customers
+(`nordic-freshservice-customers.md`), and anything still in cooldown in
+`dropped-log.md` — **match on normalized company name + primary domain** so
+variants like "Bonnier News" vs "Bonnier News AB" cannot double-add or evade
+exclusion. New companies enter at **Cadence Week 1**, Status `active`, with 3–4
+contacts, carrying their company signal / contact signal / sources into the rows.
 
 ### Step 5 — Research
 For each company that has touches due this week (Weeks 1–4), invoke
@@ -85,8 +102,10 @@ Google Doc (New / In-cadence / Exited) and **drafts** the summary email to
 
 ### Step 8 — Persist
 Write the updated `data/pipeline.md` (new companies added, weeks incremented,
-exited rows removed) and `data/dropped-log.md`. The pipeline runs continuously —
-there is no cycle-completion pause.
+exited rows removed) and `data/dropped-log.md`. **Preserve the instructional
+header comment** at the top of `pipeline.md` verbatim when rewriting — it tells
+the user they may edit only the `Status` column, and must survive every run. The
+pipeline runs continuously — there is no cycle-completion pause.
 
 ---
 
@@ -105,11 +124,17 @@ there is no cycle-completion pause.
   emphasis is partly a Netherlands-data artifact).
 - Legitimate B2B research only (ZoomInfo/Lusha terms); GDPR legitimate-interest —
   draft-only keeps a human in the loop before any contact.
+- **Legal-basis responsibility:** establishing a valid legal basis (GDPR
+  legitimate-interest assessment, suppression of opt-outs, CAN-SPAM/e-Privacy
+  compliance) for contacting sourced individuals rests with the user/Freshworks,
+  not this routine. The routine only drafts; nothing is sent until a human
+  reviews and dispatches it. Do not use the sourced data for bulk/automated
+  sending.
 
 ## Scheduling Guidance
 
 Set up as a **Claude Code Remote Routine** (not a Cowork scheduled task).
-- **Trigger:** every **Monday at 07:30** local time.
+- **Trigger:** every **Monday at 07:00** local time.
 - **Routine prompt:** *"Run the weekly prospect outreach pipeline."*
 
 The pipeline self-manages cadence and membership via `data/pipeline.md`, so the

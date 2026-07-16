@@ -11,20 +11,30 @@
   ═══════════════════════════════════════════════════════════════════════════
 
   HOW TO USE THE Status COLUMN (per contact row):
-    active         → keep contacting on the normal cadence (default)
-    responded      → they replied; pause outreach and review. Contact is removed
-                     from the active cadence (logged as a response).
-    not-interested → they said no. Contact removed; company gets the longer
-                     cooldown before it can be re-sourced.
-    disqualified   → you ruled them out (e.g. on a cold call). Contact removed.
-    drop-company   → exit the WHOLE account immediately (put on any one of its
-                     rows). Use when the company as a whole is not a fit.
+    active         → keep contacting on the normal cadence (default). A plain
+                     reply that is NOT a booked meeting and NOT a disqualifier
+                     does not stop anything — leave it active; the cadence keeps
+                     running until a meeting or a disqualifier.
+    meeting-booked → you secured a meeting with this contact → PAUSE THE WHOLE
+                     ACCOUNT. All contacts at the company stop; the account moves
+                     to an engaged state and is not re-sourced (~1 year). You own
+                     it manually from here. This is the ONLY status that pauses
+                     the other contacts at the same company.
+    not-interested → this contact declined / is happy with their current vendor /
+                     just renewed / just purchased → remove THIS contact only.
+                     The company keeps going as long as ≥1 contact stays active.
+    disqualified   → you ruled this contact out (e.g. on a cold call) → remove
+                     THIS contact only (same behaviour as not-interested).
+    drop-company   → exit the WHOLE account immediately (put on any one row).
+                     Use when the company as a whole is not a fit.
 
-  Any value other than `active` removes THAT contact at the next run. If every
-  contact at a company becomes inactive (or you use drop-company), the whole
-  company exits to data/dropped-log.md. Removal happens at whatever cadence week
-  the account is on — mid-cadence exits (e.g. a week-2 "not interested") are
-  normal and immediate.
+  A contact marked not-interested / disqualified is removed at the next run. The
+  company exits ONLY when: you use drop-company, OR every contact has become
+  inactive, OR a contact is meeting-booked (whole-account pause), OR it ages out
+  past Week 4 with no response. Removing one contact does NOT drop the company
+  and does NOT put it in cooldown. Removal happens at whatever cadence week the
+  account is on — mid-cadence exits (e.g. a week-2 "not interested") are normal
+  and immediate.
 
   COLUMN MEANINGS (workflow-managed):
     Cadence Week    1–4, incremented each weekly run. All contacts at a company

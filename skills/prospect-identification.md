@@ -100,7 +100,13 @@ For each qualified company:
 
 ## Exclusions & compliance
 
-- Dedupe against: existing customers, current pipeline, and cooldown log.
+- Dedupe against: existing customers, current pipeline, and cooldown log —
+  **match on normalized company name + primary domain**, not raw string, so
+  legal-suffix variants ("Bonnier News" vs "Bonnier News AB") can't slip through.
+- **Respect the caller's headroom.** The weekly routine enforces
+  `max_active_companies` and `weekly_add_cap` from `data/config.md`; when the
+  pipeline is already at the ceiling it will take **zero** new companies. Return
+  the ranked list regardless — the caller decides how many to take. Never pad.
 - **Never** re-source a company inside its cooldown window.
 - Real companies and real, current people only — **no fabrication**. Verify
   existence with a quick web check when data is thin.

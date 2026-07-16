@@ -145,8 +145,9 @@ schedule never changes. `prospect-identification.md` at the repo root is the
 
 | Connector | Purpose |
 |---|---|
-| **ZoomInfo** | Firmographics, intent, scoops, company signals, contacts |
+| **ZoomInfo** | Firmographics, intent, scoops, company signals, contacts, **incumbent-tool tech tags** (displacement lane) |
 | **Lusha** | Contact gaps, decision-makers, company signals, website visits |
 | **Web search / fetch** | News, annual/quarterly reports, interviews, sector trends |
+| **LinkedIn Sales Navigator** *(manual)* | AE contact-gap fallback: when ZoomInfo + Lusha return thin/no IT-leadership contacts for a qualified company, the pipeline flags it and hands the AE a pre-built Sales Nav search to check by hand (never scraped automatically) |
 | **Google Drive** | Creates the weekly pipeline Google Doc |
 | **Gmail** | Drafts the weekly summary email |

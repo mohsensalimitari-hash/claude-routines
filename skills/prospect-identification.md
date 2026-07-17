@@ -147,6 +147,30 @@ IT-leadership contacts**:
    vendors miss. This is a **manual, human-in-the-loop** step — the routine never
    scrapes LinkedIn; it only hands the AE the pre-built query.
 
+### Contact-detail enrichment (email + phone)
+Sourcing returns names/titles/LinkedIn; **revealing email + phone is a separate,
+credit-consuming step** — only do it for contacts on a company that will actually
+be worked (a qualified, in-pipeline account), never speculatively across the
+whole ranked list. Data-minimisation: reveal the **budget owner + champion first**,
+expand only if needed.
+- **Order of operations (per contact):** try **Lusha `prospecting_contact_enrich`**
+  first — in testing it returned the widest phone coverage (mobile *and* direct)
+  and sometimes multiple emails; then **ZoomInfo `enrich_contacts`** (by `personId`)
+  to fill gaps or cross-check the corporate email. Use whichever IDs you already
+  hold from sourcing (Lusha contact IDs → Lusha; ZoomInfo `personId` → ZoomInfo).
+- **Reveal only what's advertised.** Lusha exposes each field + credit cost in the
+  prior search's `canReveal[]` (≈1 credit/email, ≈5/phone); don't request fields a
+  contact doesn't advertise. ZoomInfo enrichment is free again for ~12 months once
+  a contact has been enriched.
+- **No-hit handling:** a contact can FULL_MATCH yet have **no email/phone on file**
+  (seen with interim/temp roles), and a vendor's only "IT" contact may resolve to
+  the **wrong geography** (e.g. a Dubai-based projects lead for a Sweden account).
+  Treat either as a miss: don't invent or guess an address, flag the contact
+  `no-detail`, and route the company to the **Sales Nav fallback** above.
+- **Compliance:** these are EU/GDPR contacts revealed for legitimate-interest B2B
+  research only — individual reveals, no bulk harvesting, and everything stays
+  **draft-only** (details are for the AE to review before any human-sent outreach).
+
 ## Exclusions & compliance
 
 - Dedupe against: existing customers, current pipeline, and cooldown log —
